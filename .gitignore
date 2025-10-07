@@ -69,3 +69,6 @@ $RECYCLE.BIN/
 # Local environment/config files (if you use them)
 .env
 .env.local
+
+# Environment-specific files
+venv/
