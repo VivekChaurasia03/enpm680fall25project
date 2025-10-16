@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -58,7 +59,7 @@ class Reservation(Base):
     reservation_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
     vehicle_id = Column(Integer, ForeignKey("vehicles.vehicle_id", ondelete="CASCADE"), nullable=False, index=True)
-    reservation_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    reservation_date = Column(DateTime, nullable=False, default=datetime.now)
     return_date = Column(DateTime(timezone=True), nullable=True)
     status = Column(SQLEnum(ReservationStatus), nullable=False, default=ReservationStatus.ACTIVE)
     

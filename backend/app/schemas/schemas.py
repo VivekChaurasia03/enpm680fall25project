@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     employee_id: str = Field(..., min_length=1, max_length=50)
-    phone: str = Field(..., min_length=10, max_length=20)
+    phone: Optional[str] = Field(None, max_length=20)  # Changed: Optional and no min_length
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
@@ -28,7 +28,7 @@ class UserResponse(UserBase):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    phone: Optional[str] = Field(None, min_length=10, max_length=20)
+    phone: Optional[str] = Field(None, max_length=20)  # Changed: No min_length
 
 # Vehicle Schemas
 class VehicleBase(BaseModel):
@@ -55,6 +55,9 @@ class VehicleUpdate(BaseModel):
 class ReservationCreate(BaseModel):
     user_id: int
     vehicle_id: int
+
+class ReservationReturn(BaseModel):
+    reservation_id: int
 
 class ReservationResponse(BaseModel):
     reservation_id: int
@@ -95,6 +98,7 @@ class AvailabilityResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user: UserResponse
 
 class TokenData(BaseModel):
     email: Optional[str] = None

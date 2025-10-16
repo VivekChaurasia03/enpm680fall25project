@@ -9,7 +9,8 @@ from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
-    validate_password_strength
+    validate_password_strength,
+    get_current_user
 )
 from app.core.config import settings
 from app.models.models import User, UserRole
@@ -64,13 +65,13 @@ async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db
     
     return new_user
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Authenticate user and return JWT access token.
+    Authenticate user and return JWT access token with user data.
     Works for both Fleet Managers and Fleet Users.
     """
     # Find user by email (username field in OAuth2 form)
@@ -91,4 +92,28 @@ async def login(
         expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Return token AND user data
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": {
+            "user_id": user.user_id,
+            "name": user.name,
+            "email": user.email,
+            "employee_id": user.employee_id,
+            "phone": user.phone,
+            "role": user.role,
+            "reservation_count": user.reservation_count,
+            "email_verified": user.email_verified,
+            "created_at": user.created_at.isoformat()
+        }
+    }
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current user profile information.
+    """
+    return current_user

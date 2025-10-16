@@ -12,7 +12,7 @@ from app.models.models import (
     ReservationStatus, VehicleStatus, UserRole
 )
 from app.schemas.schemas import (
-    ReservationCreate, ReservationResponse, 
+    ReservationCreate, ReservationReturn, ReservationResponse, 
     ReservationWithDetails
 )
 
@@ -91,7 +91,7 @@ async def create_reservation(
 
 @router.post("/return", response_model=ReservationResponse)
 async def return_vehicle(
-    reservation_id: int,
+    return_data: ReservationReturn,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_fleet_manager)
 ):
@@ -103,7 +103,7 @@ async def return_vehicle(
     result = await db.execute(
         select(Reservation)
         .options(selectinload(Reservation.vehicle), selectinload(Reservation.user))
-        .where(Reservation.reservation_id == reservation_id)
+        .where(Reservation.reservation_id == return_data.reservation_id)
     )
     reservation = result.scalar_one_or_none()
     
@@ -122,7 +122,7 @@ async def return_vehicle(
     
     # Update reservation
     reservation.status = ReservationStatus.COMPLETED
-    reservation.return_date = datetime.utcnow()
+    reservation.return_date = datetime.now()  
     
     # Update vehicle status
     reservation.vehicle.status = VehicleStatus.AVAILABLE
@@ -134,6 +134,42 @@ async def return_vehicle(
     await db.refresh(reservation)
     
     return reservation
+
+@router.get("/active", response_model=List[ReservationWithDetails])
+async def get_active_reservations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_fleet_manager)
+):
+    """
+    Get all active reservations (Fleet Manager only).
+    This is useful for fleet managers to see all current rentals.
+    """
+    result = await db.execute(
+        select(Reservation)
+        .options(selectinload(Reservation.user), selectinload(Reservation.vehicle))
+        .where(Reservation.status == ReservationStatus.ACTIVE)
+        .order_by(Reservation.reservation_date.desc())
+    )
+    reservations = result.scalars().all()
+    return reservations
+
+@router.get("/pending-return", response_model=List[ReservationWithDetails])
+async def get_pending_returns(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_fleet_manager)
+):
+    """
+    Get all reservations pending return (Fleet Manager only).
+    Alias for active reservations for better UX.
+    """
+    result = await db.execute(
+        select(Reservation)
+        .options(selectinload(Reservation.user), selectinload(Reservation.vehicle))
+        .where(Reservation.status == ReservationStatus.ACTIVE)
+        .order_by(Reservation.reservation_date.desc())
+    )
+    reservations = result.scalars().all()
+    return reservations
 
 @router.get("/user/{user_id}", response_model=List[ReservationWithDetails])
 async def get_user_reservations(

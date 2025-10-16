@@ -138,7 +138,7 @@ async def remove_vehicle(
     return None
 
 @router.patch("/{vehicle_id}", response_model=VehicleResponse)
-async def update_vehicle(
+async def update_vehicle_patch(
     vehicle_id: int,
     vehicle_update: VehicleUpdate,
     db: AsyncSession = Depends(get_db),
@@ -146,6 +146,36 @@ async def update_vehicle(
 ):
     """
     Update vehicle information (Fleet Manager only).
+    """
+    result = await db.execute(select(Vehicle).where(Vehicle.vehicle_id == vehicle_id))
+    vehicle = result.scalar_one_or_none()
+    
+    if not vehicle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found"
+        )
+    
+    # Update fields if provided
+    if vehicle_update.manufacturer is not None:
+        vehicle.manufacturer = vehicle_update.manufacturer
+    if vehicle_update.model is not None:
+        vehicle.model = vehicle_update.model
+    
+    await db.commit()
+    await db.refresh(vehicle)
+    
+    return vehicle
+
+@router.put("/{vehicle_id}", response_model=VehicleResponse)
+async def update_vehicle_put(
+    vehicle_id: int,
+    vehicle_update: VehicleUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_fleet_manager)
+):
+    """
+    Update vehicle information (Fleet Manager only) - PUT method.
     """
     result = await db.execute(select(Vehicle).where(Vehicle.vehicle_id == vehicle_id))
     vehicle = result.scalar_one_or_none()
