@@ -50,7 +50,7 @@ export const createVehicle = async (vehicleData) => {
  */
 export const updateVehicle = async (vehicleId, vehicleData) => {
   try {
-    const response = await api.put(`/api/vehicles/${vehicleId}`, vehicleData);
+    const response = await api.patch(`/api/vehicles/${vehicleId}`, vehicleData);
     return { success: true, data: response.data };
   } catch (error) {
     return {

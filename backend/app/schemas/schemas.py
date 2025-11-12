@@ -50,6 +50,7 @@ class VehicleResponse(VehicleBase):
 class VehicleUpdate(BaseModel):
     manufacturer: Optional[str] = Field(None, min_length=1, max_length=50)
     model: Optional[str] = Field(None, min_length=1, max_length=50)
+    license_plate: Optional[str] = Field(None, min_length=1, max_length=20)
 
 # Reservation Schemas
 class ReservationCreate(BaseModel):
