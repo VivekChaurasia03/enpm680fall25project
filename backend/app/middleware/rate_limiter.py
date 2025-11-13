@@ -25,19 +25,40 @@ class RateLimiter:
         self.ip_lockouts: Dict[str, datetime] = {}
         self.user_lockouts: Dict[int, datetime] = {}
         
-        # Rate limit configurations
+        # Rate limit configurations - using settings from config
         self.rate_limits = {
-            "default": {"requests": 100, "window": 60},  # 100 requests per minute
-            "auth_login": {"requests": 20, "window": 60},  # 20 login attempts per minute
-            "auth_register": {"requests": 10, "window": 60},  # 10 registration attempts per minute
-            "chatbot": {"requests": 15, "window": 60},  # 15 chatbot queries per minute
-            "vehicle_operations": {"requests": 50, "window": 60},  # 50 vehicle operations per minute
-            "reservation_operations": {"requests": 30, "window": 60},  # 30 reservation operations per minute
+            "default": self._parse_rate_limit(settings.RATE_LIMIT_API),
+            "auth_login": self._parse_rate_limit(settings.RATE_LIMIT_LOGIN),
+            "auth_register": self._parse_rate_limit(settings.RATE_LIMIT_REGISTER),
+            "chatbot": self._parse_rate_limit(settings.RATE_LIMIT_CHATBOT),
+            "vehicle_operations": self._parse_rate_limit(settings.RATE_LIMIT_API),
+            "reservation_operations": self._parse_rate_limit(settings.RATE_LIMIT_API),
         }
         
         # Cleanup task
         self.cleanup_task = None
         self._start_cleanup_task()
+    
+    def _parse_rate_limit(self, rate_string: str) -> dict:
+        """Parse rate limit string like '50/minute' into requests and window"""
+        try:
+            parts = rate_string.split('/')
+            requests = int(parts[0])
+            
+            time_unit = parts[1].lower()
+            if 'minute' in time_unit:
+                window = 60
+            elif 'hour' in time_unit:
+                window = 3600
+            elif 'second' in time_unit:
+                window = 1
+            else:
+                window = 60  # default to minute
+                
+            return {"requests": requests, "window": window}
+        except:
+            # Fallback to reasonable defaults
+            return {"requests": 100, "window": 60}
     
     def _start_cleanup_task(self):
         """Start background task to clean up old entries"""

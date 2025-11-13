@@ -106,14 +106,16 @@ class UserRegistrationInput(BaseModel):
             )
             raise ValueError('Password must contain at least one special character')
         
-        # Check for common weak passwords
+        # Check for common weak passwords (exact matches or simple variations)
         weak_patterns = [
-            r'password',
-            r'123456',
-            r'qwerty',
-            r'admin',
-            r'letmein',
-            r'^(.)\1{7,}$',  # Repeating character
+            r'^password\d*$',     # password, password1, password123, etc.
+            r'^123456\d*$',       # 123456, 1234567890, etc.
+            r'^qwerty\d*$',       # qwerty, qwerty123, etc.
+            r'^admin\d*$',        # admin, admin123, etc.
+            r'^letmein\d*$',      # letmein, letmein123, etc.
+            r'^(.)\1{7,}$',       # Repeating character (8+ times)
+            r'^password\W*$',     # password!, password@, etc.
+            r'^12345678+$',       # Sequential numbers
         ]
         
         for pattern in weak_patterns:
@@ -316,3 +318,87 @@ def sanitize_search_query(query: str) -> str:
     sanitized = re.sub(r'[^a-zA-Z0-9\s\-_@.]', '', sanitized)
     
     return sanitized.strip()
+
+
+# Standalone functions for testing
+def validate_email(email: str) -> bool:
+    """Standalone email validation function for testing"""
+    from pydantic import ValidationError
+    try:
+        UserRegistrationInput.model_validate({
+            'name': 'Test User',
+            'email': email,
+            'employee_id': 'TEST001', 
+            'phone': '1234567890',
+            'password': 'TempPass@123',
+            'role': 'FLEET_USER'
+        })
+        return True
+    except ValidationError:
+        return False
+
+
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    """Standalone password validation function for testing"""
+    from pydantic import ValidationError
+    try:
+        UserRegistrationInput.model_validate({
+            'name': 'Test User',
+            'email': 'test@example.com',
+            'employee_id': 'TEST001',
+            'phone': '1234567890', 
+            'password': password,
+            'role': 'FLEET_USER'
+        })
+        return True, "Password is valid"
+    except ValidationError as e:
+        error_msg = str(e)
+        # Extract meaningful error message from validation errors
+        if len(password) < settings.PASSWORD_MIN_LENGTH:
+            return False, f"Password must be at least {settings.PASSWORD_MIN_LENGTH} characters long"
+        elif not re.search(r'[A-Z]', password):
+            return False, "Password must contain at least one uppercase letter"
+        elif not re.search(r'[a-z]', password):
+            return False, "Password must contain at least one lowercase letter"
+        elif not re.search(r'\d', password):
+            return False, "Password must contain at least one digit"
+        elif not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
+            return False, "Password must contain at least one special character"
+        else:
+            return False, "Password does not meet requirements"
+
+
+def sanitize_name(name: str) -> str:
+    """Standalone name sanitization function for testing"""
+    if not name:
+        return ""
+    
+    # Remove dangerous characters and HTML tags
+    import re
+    sanitized = name.strip()
+    
+    # Remove HTML tags and script elements
+    sanitized = re.sub(r'<[^>]*>', '', sanitized)
+    
+    # Remove SQL injection patterns
+    sql_patterns = [
+        r'\bDROP\b',
+        r'\bTABLE\b',
+        r'\bSELECT\b',
+        r'\bINSERT\b',
+        r'\bUPDATE\b', 
+        r'\bDELETE\b',
+        r'--',
+        r';'
+    ]
+    
+    for pattern in sql_patterns:
+        sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
+    
+    # Remove dangerous characters except letters, spaces, hyphens, apostrophes
+    sanitized = re.sub(r"[^a-zA-Z\s\-']", '', sanitized)
+    
+    # Remove excessive whitespace
+    sanitized = ' '.join(sanitized.split())
+    
+    return sanitized

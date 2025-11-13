@@ -26,17 +26,25 @@ def test_password_hashing():
 # Test password strength validation
 def test_password_strength_valid():
     """Test valid password passes strength check"""
-    assert validate_password_strength("ValidPass@123") == True
-    assert validate_password_strength("Str0ng!Pass") == True
+    is_valid, msg = validate_password_strength("ValidPass@123")
+    assert is_valid == True
+    is_valid, msg = validate_password_strength("Str0ng!Pass")
+    assert is_valid == True
 
 def test_password_strength_invalid():
     """Test weak passwords fail strength check"""
-    assert validate_password_strength("weak") == False
-    assert validate_password_strength("noupperca5e!") == False
-    assert validate_password_strength("NOLOWERCASE1!") == False
-    assert validate_password_strength("NoNumbers!") == False
-    assert validate_password_strength("NoSpecial1") == False
-    assert validate_password_strength("Short1!") == False
+    is_valid, msg = validate_password_strength("weak")
+    assert is_valid == False
+    is_valid, msg = validate_password_strength("noupperca5e!")
+    assert is_valid == False
+    is_valid, msg = validate_password_strength("NOLOWERCASE1!")
+    assert is_valid == False
+    is_valid, msg = validate_password_strength("NoNumbers!")
+    assert is_valid == False
+    is_valid, msg = validate_password_strength("NoSpecial1")
+    assert is_valid == False
+    is_valid, msg = validate_password_strength("Short1!")
+    assert is_valid == False
 
 # Test JWT token creation
 def test_jwt_token_creation():

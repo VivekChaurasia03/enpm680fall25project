@@ -113,13 +113,13 @@ class VehicleCreateInput(BaseModel):
             )
             raise ValueError('License plate must be between 5 and 20 characters')
         
-        # Allow only alphanumeric characters, hyphens, and spaces
-        if not re.match(r'^[A-Z0-9\s\-]+$', cleaned):
+        # Allow only alphanumeric characters and hyphens (no spaces)
+        if not re.match(r'^[A-Z0-9\-]+$', cleaned):
             audit_logger.log_input_validation_failure(
                 validation_type="INVALID_LICENSE_PLATE_FORMAT",
                 input_value=v
             )
-            raise ValueError('License plate must contain only letters, numbers, spaces, and hyphens')
+            raise ValueError('License plate must contain only letters, numbers, and hyphens')
         
         # Check for suspicious patterns
         suspicious_patterns = [
@@ -151,21 +151,31 @@ class VehicleCreateInput(BaseModel):
                 )
                 raise ValueError('License plate contains inappropriate content')
         
-        # Validate common license plate formats
-        valid_formats = [
-            r'^[A-Z]{1,3}[0-9]{1,4}[A-Z]{0,2}$',  # ABC1234, A123B, etc.
-            r'^[0-9]{1,3}[A-Z]{1,3}[0-9]{1,4}$',  # 123ABC456
-            r'^[A-Z0-9]{5,8}$',  # Mixed alphanumeric
-            r'^[A-Z]{2,3}\-[0-9]{3,4}$',  # AB-1234
-            r'^[0-9]{3}\-[A-Z]{2,3}$',  # 123-ABC
-        ]
+        # Validate common license plate formats - be strict about hyphen patterns
+        # Check if the plate has proper hyphen format or no hyphens
+        hyphen_count = cleaned.count('-')
         
-        # Remove spaces and hyphens for format validation
-        format_check = cleaned.replace(' ', '').replace('-', '')
+        if hyphen_count == 0:
+            # No hyphens - validate as continuous alphanumeric
+            valid_no_hyphen = [
+                r'^[A-Z]{1,3}[0-9]{1,4}[A-Z]{0,2}$',  # ABC1234, A123B, etc.
+                r'^[0-9]{1,3}[A-Z]{1,3}[0-9]{1,4}$',  # 123ABC456
+                r'^[A-Z0-9]{5,8}$',  # Mixed alphanumeric
+            ]
+            is_valid_format = any(re.match(pattern, cleaned) for pattern in valid_no_hyphen)
+        elif hyphen_count == 1:
+            # Single hyphen - validate specific patterns
+            valid_hyphen = [
+                r'^[A-Z]{2,4}\-[0-9]{3,5}$',  # AB-1234, ABC-1234, TEST-001, ABCD-12345
+                r'^[0-9]{3}\-[A-Z]{2,3}$',  # 123-ABC, 123-AB
+                r'^[A-Z]{2,3}\-[0-9]{2,4}$',  # FL-123, XYZ-567
+            ]
+            is_valid_format = any(re.match(pattern, cleaned) for pattern in valid_hyphen)
+        else:
+            # Multiple hyphens are not allowed
+            is_valid_format = False
         
-        is_valid_format = any(re.match(pattern, format_check) for pattern in valid_formats)
-        
-        if not is_valid_format and len(format_check) > 8:
+        if not is_valid_format:
             audit_logger.log_input_validation_failure(
                 validation_type="INVALID_LICENSE_PLATE_FORMAT",
                 input_value=v
@@ -363,5 +373,57 @@ def sanitize_vehicle_data_export(data: dict) -> dict:
                 )
                 del sanitized[key]
                 break
+    
+    return sanitized
+
+
+# Standalone functions for testing
+def validate_license_plate(license_plate: str) -> bool:
+    """Standalone license plate validation function for testing"""
+    from pydantic import ValidationError
+    try:
+        VehicleCreateInput.model_validate({
+            'manufacturer': 'Test Manufacturer',
+            'model': 'Test Model',
+            'license_plate': license_plate
+        })
+        return True
+    except ValidationError:
+        return False
+
+
+def sanitize_vehicle_input(input_str: str) -> str:
+    """Standalone vehicle input sanitization function for testing"""
+    if not input_str:
+        return ""
+    
+    import re
+    sanitized = input_str.strip()
+    
+    # Remove HTML tags and script elements
+    sanitized = re.sub(r'<[^>]*>', '', sanitized)
+    
+    # Remove SQL injection patterns
+    dangerous_patterns = [
+        r"'.*'",
+        r'".*"',
+        r'--',
+        r'/\*',
+        r'\*/',
+        r'\bDROP\b',
+        r'\bSELECT\b',
+        r'\bINSERT\b',
+        r'\bUPDATE\b',
+        r'\bDELETE\b',
+    ]
+    
+    for pattern in dangerous_patterns:
+        sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
+    
+    # Keep only alphanumeric characters, spaces, and hyphens  
+    sanitized = re.sub(r'[^a-zA-Z0-9\s\-]', '', sanitized)
+    
+    # Remove excessive whitespace
+    sanitized = ' '.join(sanitized.split())
     
     return sanitized

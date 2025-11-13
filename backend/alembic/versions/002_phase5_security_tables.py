@@ -21,14 +21,16 @@ def upgrade() -> None:
     op.create_table(
         'failed_login_attempts',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('email', sa.String(length=255), nullable=False),
+        sa.Column('user_email', sa.String(length=255), nullable=False),
+        sa.Column('attempt_count', sa.Integer(), nullable=False, server_default='1'),
+        sa.Column('first_attempt', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('last_attempt', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
         sa.Column('ip_address', sa.String(length=45), nullable=True),
-        sa.Column('attempted_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-        sa.Column('user_agent', sa.String(length=500), nullable=True),
+        sa.Column('locked_until', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_failed_login_attempts_email'), 'failed_login_attempts', ['email'], unique=False)
-    op.create_index(op.f('ix_failed_login_attempts_attempted_at'), 'failed_login_attempts', ['attempted_at'], unique=False)
+    op.create_index(op.f('ix_failed_login_attempts_user_email'), 'failed_login_attempts', ['user_email'], unique=False)
+    op.create_index(op.f('ix_failed_login_attempts_last_attempt'), 'failed_login_attempts', ['last_attempt'], unique=False)
     
     # Create security_events table
     op.create_table(
@@ -80,6 +82,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_security_events_event_type'), table_name='security_events')
     op.drop_table('security_events')
     
-    op.drop_index(op.f('ix_failed_login_attempts_attempted_at'), table_name='failed_login_attempts')
-    op.drop_index(op.f('ix_failed_login_attempts_email'), table_name='failed_login_attempts')
+    op.drop_index(op.f('ix_failed_login_attempts_last_attempt'), table_name='failed_login_attempts')
+    op.drop_index(op.f('ix_failed_login_attempts_user_email'), table_name='failed_login_attempts')
     op.drop_table('failed_login_attempts')
