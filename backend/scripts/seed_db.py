@@ -1,6 +1,7 @@
 """
 Seed script to create initial Fleet Manager accounts and sample data.
-Run this after database migration: python scripts/seed_db.py
+Creates all necessary tables and seeds with initial data.
+Run this script: python scripts/seed_db.py
 """
 import asyncio
 import sys
@@ -10,11 +11,23 @@ import os
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import AsyncSessionLocal
+from sqlalchemy import text
+from app.core.database import AsyncSessionLocal, engine
 from app.core.security import get_password_hash
 from app.models.models import User, Vehicle, UserRole, VehicleStatus
+from app.models.audit_log import AuditLog, FailedLoginAttempt, SecurityEvent
+
+async def create_tables():
+    """Create all necessary tables for authentication"""
+    from app.core.database import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        print("✅ Created all database tables")
 
 async def seed_database():
+    # First create tables
+    await create_tables()
+    
     async with AsyncSessionLocal() as session:
         print("🌱 Seeding database...")
         
@@ -48,6 +61,22 @@ async def seed_database():
         print("✅ Created 2 Fleet Manager accounts")
         print("   - manager1@fleetwise.com / Manager@123")
         print("   - manager2@fleetwise.com / Manager@456")
+        
+        # Create Fleet User account for testing
+        fleet_user = User(
+            name="John User",
+            email="john@example.com",
+            employee_id="FU001",
+            phone="555-0201",
+            password_hash=get_password_hash("Password@123"),
+            role=UserRole.FLEET_USER,
+            reservation_count=0,
+            email_verified=True
+        )
+        
+        session.add(fleet_user)
+        print("✅ Created 1 Fleet User account")
+        print("   - john@example.com / Password@123")
         
         # Create sample vehicles
         vehicles = [
