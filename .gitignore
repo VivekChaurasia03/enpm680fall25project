@@ -1,0 +1,74 @@
+# ==========================
+# Go Build Artifacts
+# ==========================
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build directories
+/bin/
+/build/
+/dist/
+
+# Go modules & dependencies (vendor is optional)
+vendor/
+
+# Coverage reports
+*.cover
+*.coverprofile
+coverage.out
+
+# Logs
+*.log
+
+# ==========================
+# JetBrains GoLand / IntelliJ
+# ==========================
+.idea/
+*.iml
+out/
+
+# Exclude IDE-specific files that can clutter repos
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/shelf
+.idea/httpRequests
+
+# ==========================
+# OS-Specific Junk
+# ==========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.nfs*
+
+# ==========================
+# Misc
+# ==========================
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Local environment/config files (if you use them)
+.env
+.env.local
+
+# Environment-specific files
+venv/
